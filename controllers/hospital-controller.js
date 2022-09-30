@@ -12,6 +12,10 @@ router.put('/update-hospital/:id', (req, res) => {
   hospital.updateHospital(req, res);
 });
 
+router.get('/get-hospital-details', (req, res) => {
+  hospital.getHospitalDetails(req, res);
+});
+
 router.get('/get-hospitals', (req, res) => {
   hospital.getHospitals(req, res);
 });

@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
-const Image = require('../models/image-model');
 const config = require('../config/config');
-const generator = require('generate-password');
 const {transporter} = require("../config/config");
 
 const hospitalSchema = mongoose.Schema({
@@ -44,7 +42,7 @@ const Hospital = module.exports = mongoose.model('Hospitals', hospitalSchema);
 module.exports.addHospital = (req , res) => {
   Hospital.findOne({name: req.body.name}, (error, hospital) => {
     if (error) {
-      res.status(500).json({success: false, message: 'Error occurred while creating hospital.'});
+      res.status(500).json({success: false, message: 'Error occurred while adding details of hospital.'});
       return;
     }
 
@@ -67,12 +65,12 @@ module.exports.addHospital = (req , res) => {
 
       hospital.save((error, result)=> {
         if(error) {
-          res.status(500).json({success: false, message: 'Error occurred while creating hospital.'});
+          res.status(500).json({success: false, message: 'Error occurred while adding hospital details.'});
           return;
         }
 
         if(!error) {
-          res.status(200).json({success: true, hospital: result, message: 'Hospital created successfully'});
+          res.status(200).json({success: true, hospital: result, message: 'Hospital details added successfully'});
         }
       });
     }
@@ -127,6 +125,36 @@ module.exports.getHospitals = (req, res) => {
       }
 
       res.status(200).json({status: 'Success', hospitals: hospitals});
+    }
+  });
+}
+
+module.exports.getHospitalDetails = (req, res) => {
+  Hospital.findOne({createdBy: req.query.id}, (error, response) => {
+    if(error) {
+      res.status(500).json({status: 'Error', message: 'Error occurred while getting hospital details.'});
+      return
+    }
+
+    if(!error && response) {
+
+      const hospital = {
+        _id: response._id,
+        name: response.name,
+        profileImage: response.profileImage,
+        email: response.email,
+        location: response.location,
+        status: response.status,
+        createdBy: response.createdBy,
+        createdAt: response.createdAt,
+        updatedAt: response.updatedAt,
+      };
+
+      res.status(200).json({status: 'Success', hospital: hospital});
+    }
+
+    if (!error && !response) {
+      res.status(200).json({status: 'Success', hospital: null});
     }
   });
 }

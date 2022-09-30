@@ -17,7 +17,7 @@ const userSchema = mongoose.Schema({
     required: true
   },
   isTemporaryPassword: {
-    type: String,
+    type: Boolean,
     required: false
   },
   createdAt: {
@@ -67,6 +67,7 @@ module.exports.createAccount = (req , res) => {
 
             if(!error) {
               user.password = hash;
+              user.role = 'ADMIN';
               user.save((error)=> {
                 if(error) {
                   res.status(500).json({success: false, message: 'Error occurred while creating account.'});
@@ -100,12 +101,16 @@ module.exports.getUserByEmail = (req, res) => {
       return;
     }
 
+    console.log(user);
+
     if(user && !user.isTemporaryPassword) {
       bcryptjs.compare(password, user.password, (error , isMatch) => {
         if (error) {
           res.status(500).json({success: false, message: 'Error occurred while comparing password.'});
           return;
         }
+
+        console.log(isMatch);
 
         if (!isMatch) {
           res.status(400).json({success: false, message: 'Password does not match.'});

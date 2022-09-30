@@ -1,15 +1,16 @@
 const mongoose = require('mongoose');
 const User = require('./user-model');
 const generator = require("generate-password");
+const bcryptjs = require("bcryptjs");
 
 const adminSchema = mongoose.Schema({
   firstName: {
     type: String,
-    required: true
+    required: false
   },
   lastName: {
     type: String,
-    required: true
+    required: false
   },
   profileImage: {
     type: String,
@@ -56,41 +57,60 @@ module.exports.addAdmin = (req , res) => {
     }
 
     if (!response) {
-      const user = new User({
-        email: req.body.email,
-        password: generator.generate({length: 10, numbers: true}),
-        role: 'ADMIN',
-        isTemporaryPassword: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
 
-      user.save((error, response) => {
+      bcryptjs.genSalt(10, (error, salt) => {
         if (error) {
-          res.status(500).json({success: false, message: 'Error occurred while creating admin credentials.'});
+          res.status(500).json({success: false, message: 'Error occurred while encrypting the password.'});
           return;
         }
 
         if (!error) {
-          const admin = new Admin({
-            profileImage: req.body.profileImage ? req.body.profileImage : null,
-            firstName: req.body.firstName,
-            lastName: req.body.lastName,
-            email: req.body.email,
-            addressDetails: req.body.address,
-            user: response._id,
-            status: 'ACTIVE',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-
-          admin.save((error) => {
+          bcryptjs.hash(req.body.password, salt, (error, hash) => {
             if (error) {
-              res.status(500).json({success: false, message: 'Account created but details not saved. Please try again when login.'});
+              res.status(500).json({success: false, message: 'Error occurred while encrypting the password.'});
               return;
             }
 
-            res.status(200).json({success: true, message: 'Admin profile added successfully.'});
+            if (!error) {
+              const user = new User({
+                email: req.body.email,
+                password: hash,
+                role: 'ADMIN',
+                isTemporaryPassword: false,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              });
+
+              user.save((error, response) => {
+                if (error) {
+                  res.status(500).json({success: false, message: 'Error occurred while creating admin credentials.'});
+                  return;
+                }
+
+                if (!error) {
+                  const admin = new Admin({
+                    profileImage: req.body.profileImage ? req.body.profileImage : null,
+                    firstName: req.body.firstName,
+                    lastName: req.body.lastName,
+                    email: req.body.email,
+                    addressDetails: req.body.address,
+                    user: response._id,
+                    status: 'ACTIVE',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  });
+
+                  admin.save((error) => {
+                    if (error) {
+                      res.status(500).json({success: false, message: 'Account created but details not saved. Please try again when login.'});
+                      return;
+                    }
+
+                    res.status(200).json({success: true, message: 'Admin profile added successfully.'});
+                  });
+                }
+              });
+            }
           });
         }
       });

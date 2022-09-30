@@ -54,10 +54,6 @@ const doctorSchema = mongoose.Schema({
     type: Array,
     required: false
   },
-  hospital: {
-    type: String,
-    required: true
-  },
   clinic: {
     type: Object,
     required: false
@@ -142,7 +138,6 @@ module.exports.addDoctor = (req , res) => {
             education: req.body.education ? req.body.education : null,
             experience: req.body.experience ? req.body.experience : null,
             status: 'ACTIVE',
-            hospital: req.body.hospital,
             user: response._id,
             createdBy: req.body.createdBy,
             createdAt: new Date(),
@@ -187,11 +182,8 @@ module.exports.getDoctors = async (req, res) => {
 
   if (req.query.id && req.query.role === 'PATIENT') {
     const patient = await Patient.findOne({user: req.query.id});
-    console.log(patient);
     query = {createdBy: patient.createdBy}
   }
-
-  console.log(query);
 
   Doctor.find(query, (error, response) => {
     if(error) {
@@ -220,7 +212,6 @@ module.exports.getDoctors = async (req, res) => {
             education: doctor.education,
             experience: doctor.experience,
             status: doctor.status,
-            hospital: doctor.hospital,
             appointments: 0,
             totalIncome: 0,
             createdBy: doctor.createdBy,
@@ -274,7 +265,6 @@ module.exports.getDoctorDetailsById = (req, res) => {
         education: response.education,
         experience: response.experience,
         status: response.status,
-        hospital: response.hospital,
         user: response.user,
         createdBy: response.createdBy,
         createdAt: response.createdAt,
@@ -287,7 +277,7 @@ module.exports.getDoctorDetailsById = (req, res) => {
 }
 
 module.exports.getDoctorDetailsByUserId = (req, res) => {
-  Doctor.findOne({user: req.params.id}, (error, response) => {
+  Doctor.findOne({user: req.query.id}, (error, response) => {
     if(error) {
       res.status(500).json({status: 'Error', message: 'Error occurred while getting doctor details.'});
       return
@@ -310,7 +300,6 @@ module.exports.getDoctorDetailsByUserId = (req, res) => {
         education: response.education,
         experience: response.experience,
         status: response.status,
-        hospital: response.hospital,
         user: response.user,
         createdBy: response.createdBy,
         createdAt: response.createdAt,
