@@ -3,7 +3,7 @@ const appointment = require('../models/appointment-model');
 
 const router = express.Router();
 
-router.post('/create-appointment', (req, res) => {
+router.post('/schedule-appointment', (req, res) => {
   appointment.scheduleAppointment(req, res);
 });
 

@@ -1,6 +1,5 @@
 const express = require('express');
 const hospital = require('../models/hospital-model');
-const doctor = require("../models/doctor-model");
 
 const router = express.Router();
 
@@ -12,8 +11,12 @@ router.put('/update-hospital/:id', (req, res) => {
   hospital.updateHospital(req, res);
 });
 
-router.get('/get-hospital-details', (req, res) => {
+router.get('/get-hospital-details/:id', (req, res) => {
   hospital.getHospitalDetails(req, res);
+});
+
+router.get('/get-hospital-details-by-admin/:id', (req, res) => {
+  hospital.getHospitalDetailsByAdminId(req, res);
 });
 
 router.get('/get-hospitals', (req, res) => {
@@ -28,8 +31,8 @@ router.post('/send-credentials-email/:id', (req, res) => {
   hospital.sendCredentialsEmail(req, res);
 });
 
-router.put('/change-hospital-status/:id', (req, res) => {
-  hospital.changeHospitalStatus(req, res);
+router.put('/update-hospital-status/:id', (req, res) => {
+  hospital.updateHospitalStatus(req, res);
 });
 
 module.exports = router;

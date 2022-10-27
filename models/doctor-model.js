@@ -1,9 +1,8 @@
 const mongoose = require('mongoose');
 const User = require('../models/user-model');
 const generator = require("generate-password");
-const appointment = require("../models/appointment-model");
-const moment = require("moment");
-const Patient = require("./patient-model");
+const Reviews = require('../models/review-model');
+const Patient = require("../models/patient-model");
 
 const doctorSchema = mongoose.Schema({
   firstName: {
@@ -185,7 +184,7 @@ module.exports.getDoctors = async (req, res) => {
     query = {createdBy: patient.createdBy}
   }
 
-  Doctor.find(query, (error, response) => {
+  Doctor.find(query, async (error, response) => {
     if(error) {
       res.status(500).json({status: 'Error', message: 'Error occurred while getting doctors.'});
       return
@@ -196,6 +195,23 @@ module.exports.getDoctors = async (req, res) => {
 
       if (response && response.length > 0) {
         for (const doctor of response) {
+
+          const reviews = await Reviews.find({doctor: doctor.user});
+          let rating = 0;
+
+          if (reviews && reviews.length > 0) {
+            let totalRating = 0;
+
+            for (const review of reviews) {
+              totalRating = review.rating + totalRating
+            }
+
+            const usersMaxRating = reviews.length * 5;
+
+            rating = (totalRating * 5) / usersMaxRating;
+          }
+
+
           const data = {
             _id: doctor._id,
             firstName: doctor.firstName,
@@ -213,10 +229,13 @@ module.exports.getDoctors = async (req, res) => {
             experience: doctor.experience,
             status: doctor.status,
             appointments: 0,
-            totalIncome: 0,
             createdBy: doctor.createdBy,
             createdAt: doctor.createdAt,
             updatedAt: doctor.updatedAt,
+            user: doctor.user,
+            scheduleTimings: doctor.scheduleTimings,
+            rating: rating,
+            totalReviews: reviews.length
           };
 
           doctors.push(data);
@@ -262,6 +281,7 @@ module.exports.getDoctorDetailsById = (req, res) => {
         services: response.services,
         specializations: response.specializations,
         addressDetails: response.addressDetails,
+        scheduleTimings: response.scheduleTimings,
         education: response.education,
         experience: response.experience,
         status: response.status,
@@ -341,9 +361,13 @@ module.exports.scheduleTimings = (req, res) => {
         query = { '$set': { 'scheduleTimings':  response.scheduleTimings }};
       }
 
-      if (index < -1) {
+      if (index === -1) {
         query = { '$push': { 'scheduleTimings':  req.body }};
       }
+    }
+
+    if (response && response.scheduleTimings && response.scheduleTimings.length === 0) {
+      query = { '$push': { 'scheduleTimings':  req.body }};
     }
 
     Doctor.findOneAndUpdate({user: req.body.user},  query,{}, (error) => {
@@ -353,37 +377,112 @@ module.exports.scheduleTimings = (req, res) => {
       }
 
       if (!error) {
-        res.status(200).json({success: true, message: 'Timing schedule successfully.'});
+        res.status(200).json({success: true, message: 'Available timings for appointments scheduled successfully.'});
       }
     });
   });
 }
 
 module.exports.getDoctorAnalytics = (req, res) => {
-  appointment.find({doctor: req.params.id}, (error, response) => {
-    if (error) {
-      res.status(500).json({success: false, message: 'Error occurred while get doctor analytics.'});
-      return;
+  // Common.getDoctorAnalytics(req, res);
+  res.status(200).json();
+}
+
+module.exports.getTopRatedDoctors = async (req, res) => {
+  const doctors = await Doctor.find();
+  let doctorsWithRating = [];
+
+  for (let doctor of doctors) {
+    const reviews = await Reviews.find({doctor: doctor.user});
+    let rating = 0;
+
+    if (reviews && reviews.length > 0) {
+      let totalRating = 0;
+
+      for (const review of reviews) {
+        totalRating = review.rating + totalRating
+      }
+
+      const usersMaxRating = reviews.length * 5;
+
+      rating = (totalRating * 5) / usersMaxRating;
+
+      doctorsWithRating.push({...doctor._doc, rating: rating, totalReviews:  reviews.length});
+    }
+  }
+
+
+  if (doctorsWithRating && doctorsWithRating.length > 0) {
+    doctorsWithRating = doctorsWithRating.sort((doctor1, doctor2) => doctor1.rating < doctor2.rating ? 1 : -1).slice(0, 5);
+
+
+  }
+
+  res.status(200).json({status: 'Success', doctors: doctorsWithRating});
+
+
+}
+
+module.exports.searchDoctors = (req, res) => {
+  let query = {};
+
+  if (req.query) {
+    query['$or'] = [];
+
+    if (req.query.name) {
+      query['$or'].push({firstName: {$regex: req.query.name, $options: "i"}});
+      query['$or'].push({lastName: {$regex: req.query.name, $options: "i"}});
     }
 
-    if (response && response.length > 0) {
-      const totalPatients = response.map(appointment => appointment.patient).filter((patient, index, self) => self.indexOf(patient) === index).length;
-      const todayPatients = response.map(appointment => moment(new Date(appointment.dateAndTime), 'MM-DDD-YYYY') === moment(new Date(), 'MM-DDD-YYYY'));
-      const appointments = response.filter(response => response.status === 'COMPLETED');
-
-      res.status(200).json({success: true, analytics: {
-        todayPatients: todayPatients,
-        totalPatients: totalPatients,
-        appointments: appointments
-      }});
+    if (req.query.speciality) {
+      query['$or'].push({specializations: { "$in" : [req.query.speciality] }});
     }
 
-    if (response && response.length === 0) {
-      res.status(200).json({success: true, analytics: {
-          todayPatients: 0,
-          totalPatients: 0,
-          appointments: 0
-        }});
+    if (req.query.city) {
+      query['$or'].push({"addressDetails.city": {$regex: req.query.city, $options: "i"}});
+    }
+  }
+
+  Doctor.find(query, (error, response) => {
+    if(error) {
+      res.status(500).json({status: 'Error', message: 'Error occurred while getting doctors.'});
+      return
+    }
+
+    if(!error) {
+      const doctors = [];
+
+      if (response && response.length > 0) {
+        for (const doctor of response) {
+          const data = {
+            _id: doctor._id,
+            firstName: doctor.firstName,
+            lastName: doctor.lastName,
+            profileImage: doctor.profileImage,
+            email: doctor.email,
+            gender: doctor.gender,
+            DOB: doctor.DOB,
+            phoneNumber: doctor.phoneNumber,
+            biography: doctor.biography,
+            services: doctor.services,
+            specializations: doctor.specializations,
+            addressDetails: doctor.addressDetails,
+            education: doctor.education,
+            experience: doctor.experience,
+            status: doctor.status,
+            appointments: 0,
+            createdBy: doctor.createdBy,
+            createdAt: doctor.createdAt,
+            updatedAt: doctor.updatedAt,
+            user: doctor.user,
+            scheduleTimings: doctor.scheduleTimings
+          };
+
+          doctors.push(data);
+        }
+      }
+
+      res.status(200).json({status: 'Success', doctors: doctors});
     }
   });
 }

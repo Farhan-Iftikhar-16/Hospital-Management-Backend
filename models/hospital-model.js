@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const config = require('../config/config');
 const {transporter} = require("../config/config");
+const Admin = require("../models/admin-model");
 
 const hospitalSchema = mongoose.Schema({
   name: {
@@ -17,7 +18,7 @@ const hospitalSchema = mongoose.Schema({
   },
   profileImage: {
     type: String,
-    required: true
+    required: false
   },
   createdBy: {
     type: String,
@@ -91,13 +92,7 @@ module.exports.updateHospital = (req , res) => {
 }
 
 module.exports.getHospitals = (req, res) => {
-  let query = {};
-
-  if (req.params.id) {
-    query = {createdBy: req.params.id};
-  }
-
-  Hospital.find(query, (error, response) => {
+  Hospital.find({}, async (error, response) => {
     if(error) {
       res.status(500).json({status: 'Error', message: 'Error occurred while getting hospitals.'});
       return
@@ -108,12 +103,18 @@ module.exports.getHospitals = (req, res) => {
 
       if (response && response.length > 0) {
         for (const hospital of response) {
+          const admin = await Admin.findOne({user: hospital.createdBy});
           const data = {
             _id: hospital._id,
             name: hospital.name,
             location: hospital.location,
             profileImage: hospital.profileImage,
             createdBy: hospital.createdBy,
+            admin: {
+              name: admin.firstName + ' ' + admin.lastName,
+              profileImage: admin.profileImage,
+              email: admin.email
+            },
             email: hospital.email,
             status: hospital.status,
             doctors: 0,
@@ -130,7 +131,36 @@ module.exports.getHospitals = (req, res) => {
 }
 
 module.exports.getHospitalDetails = (req, res) => {
-  Hospital.findOne({createdBy: req.query.id}, (error, response) => {
+  Hospital.findOne({_id: req.params.id}, (error, response) => {
+    if(error) {
+      res.status(500).json({status: 'Error', message: 'Error occurred while getting hospital details.'});
+      return
+    }
+
+    if(!error && response) {
+      const hospital = {
+        _id: response._id,
+        name: response.name,
+        profileImage: response.profileImage,
+        email: response.email,
+        location: response.location,
+        status: response.status,
+        createdBy: response.createdBy,
+        createdAt: response.createdAt,
+        updatedAt: response.updatedAt,
+      };
+
+      res.status(200).json({status: 'Success', hospital: hospital});
+    }
+
+    if (!error && !response) {
+      res.status(200).json({status: 'Success', hospital: null});
+    }
+  });
+}
+
+module.exports.getHospitalDetailsByAdminId = (req, res) => {
+  Hospital.findOne({createdBy: req.params.id}, (error, response) => {
     if(error) {
       res.status(500).json({status: 'Error', message: 'Error occurred while getting hospital details.'});
       return
@@ -196,7 +226,7 @@ module.exports.sendCredentialsEmail = (req, res) => {
   });
 }
 
-module.exports.changeHospitalStatus = (req, res) => {
+module.exports.updateHospitalStatus = (req, res) => {
   Hospital.findOneAndUpdate(req.params._id, {status: req.body.status},{}, (error) => {
     if (error) {
       res.status(500).json({success: false, message: 'Error occurred while updating status of hospital.'});

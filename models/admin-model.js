@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const User = require('./user-model');
-const generator = require("generate-password");
 const bcryptjs = require("bcryptjs");
 
 const adminSchema = mongoose.Schema({
@@ -57,7 +56,6 @@ module.exports.addAdmin = (req , res) => {
     }
 
     if (!response) {
-
       bcryptjs.genSalt(10, (error, salt) => {
         if (error) {
           res.status(500).json({success: false, message: 'Error occurred while encrypting the password.'});

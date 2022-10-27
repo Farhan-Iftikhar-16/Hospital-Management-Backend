@@ -39,4 +39,8 @@ router.get('/get-doctor-analytics', (req, res) => {
   doctor.getDoctorAnalytics(req, res);
 });
 
+router.get('/get-top-rated-doctors', (req, res) => {
+  doctor.getTopRatedDoctors(req, res);
+});
+
 module.exports = router;

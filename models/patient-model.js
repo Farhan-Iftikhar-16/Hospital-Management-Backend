@@ -1,20 +1,19 @@
 const mongoose = require('mongoose');
 const User = require('../models/user-model');
 const generator = require("generate-password");
-const Appointments = require("../models/appointment-model");
 
 const patientSchema = mongoose.Schema({
   firstName: {
     type: String,
-    required: true
+    required: false
   },
   lastName: {
     type: String,
-    required: true
+    required: false
   },
   DOB: {
     type: String,
-    required: true
+    required: false
   },
   phoneNumber: {
     type: String,
@@ -22,15 +21,15 @@ const patientSchema = mongoose.Schema({
   },
   email: {
     type: String,
-    required: true
+    required: false
   },
   gender: {
     type: String,
-    required: true
+    required: false
   },
   bloodGroup: {
     type: String,
-    required: true
+    required: false
   },
   addressDetails: {
     type: Object,
@@ -46,11 +45,11 @@ const patientSchema = mongoose.Schema({
   },
   createdBy: {
     type: String,
-    required: true
+    required: false
   },
   user: {
     type: String,
-    required: true
+    required: false
   },
   createdAt: {
     type: Date,
@@ -127,8 +126,9 @@ module.exports.addPatient = (req , res) => {
 }
 
 module.exports.updatePatient = (req , res) => {
-  Patient.findOneAndUpdate(req.params._id, req.body,{}, (error) => {
+  Patient.findOneAndUpdate(req.params.id, req.body,{}, (error) => {
     if (error) {
+      console.log(error)
       res.status(500).json({success: false, message: 'Error occurred while updating details of patient.'});
       return;
     }
@@ -151,16 +151,16 @@ module.exports.getPatients = (req, res) => {
   }
 
   if (req.query.role === 'DOCTOR' && query && query.doctor) {
-    Appointments.find(query, async (error, response) => {
-      const patients = [];
-      for (const appointment of response) {
-        const patient = await Patient.findOne({_id: appointment.doctor});
-        patients.push(patient);
-      }
-
-      res.status(200).json({status: 'Success', patients: patients});
-    });
-
+    // Appointments.find(query, async (error, response) => {
+    //   const patients = [];
+    //   for (const appointment of response) {
+    //     const patient = await Patient.findOne({_id: appointment.doctor});
+    //     patients.push(patient);
+    //   }
+    //
+    //   res.status(200).json({status: 'Success', patients: patients});
+    // });
+    res.status(200).json({status: 'Success', patients: []});
     return;
   }
 

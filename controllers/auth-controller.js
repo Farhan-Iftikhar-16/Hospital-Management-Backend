@@ -11,4 +11,8 @@ router.post('/create-account', (req, res) => {
   User.createAccount(req, res);
 });
 
+router.put('/reset-password', (req, res) => {
+  User.resetPassword(req, res);
+});
+
 module.exports = router;

@@ -101,16 +101,12 @@ module.exports.getUserByEmail = (req, res) => {
       return;
     }
 
-    console.log(user);
-
-    if(user && !user.isTemporaryPassword) {
+  if(user && !user.isTemporaryPassword) {
       bcryptjs.compare(password, user.password, (error , isMatch) => {
         if (error) {
           res.status(500).json({success: false, message: 'Error occurred while comparing password.'});
           return;
         }
-
-        console.log(isMatch);
 
         if (!isMatch) {
           res.status(400).json({success: false, message: 'Password does not match.'});
@@ -153,7 +149,99 @@ module.exports.getUserByEmail = (req, res) => {
         user: {
           _id: user._id,
           email: user.email,
-          role: user.role
+          role: user.role,
+          isTemporaryPassword: user.isTemporaryPassword
+        }
+      });
+    }
+  });
+}
+
+module.exports.resetPassword = (req, res) => {
+  User.findById(req.body.id, (error, response) => {
+    if (error) {
+      res.status(500).json({success: false, message: 'Error occurred while finding user.'});
+      return;
+    }
+
+    if (!response) {
+      res.status(404).json({success: false, message: 'User not found.'});
+      return;
+    }
+
+    if (response && response.isTemporaryPassword) {
+      if(response.password !== req.body.recentPassword) {
+        res.status(500).json({success: false, message: 'Error occurred while resetting password.'});
+        return;
+      }
+
+      bcryptjs.genSalt(10, (error, salt) => {
+        if(error) {
+          res.status(500).json({success: false, message: 'Error occurred while resetting the password.'});
+          return;
+        }
+
+        if(!error) {
+          bcryptjs.hash(req.body.password, salt, (error, hash) => {
+            if (error) {
+              res.status(500).json({success: false, message: 'Error occurred while resetting the password.'});
+              return;
+            }
+
+            User.findByIdAndUpdate(req.body.id, {$set: {password: hash}}, (error) => {
+              if (error) {
+                res.status(500).json({success: false, message: 'Error occurred while resetting the password.'});
+                return;
+              }
+
+              if (!error) {
+                res.status(200).json({success: true, message: 'Password reset successfully. Please login again.'});
+              }
+            });
+          });
+        }
+      });
+    }
+
+    if (response && !response.isTemporaryPassword) {
+      bcryptjs.compare(req.body.recentPassword, response.password, (error , isMatch) => {
+        if (error) {
+          res.status(500).json({success: false, message: 'Error occurred while resetting password.'});
+          return;
+        }
+
+        if (!isMatch) {
+          res.status(400).json({success: false, message: 'Password does not match.'});
+          return;
+        }
+
+        if (isMatch) {
+          bcryptjs.genSalt(10, (error, salt) => {
+            if(error) {
+              res.status(500).json({success: false, message: 'Error occurred while resetting the password.'});
+              return;
+            }
+
+            if(!error) {
+              bcryptjs.hash(req.body.password, salt, (error, hash) => {
+                if (error) {
+                  res.status(500).json({success: false, message: 'Error occurred while resetting the password.'});
+                  return;
+                }
+
+                User.findByIdAndUpdate(req.body.id, {$set: {password: hash}}, (error) => {
+                  if (error) {
+                    res.status(500).json({success: false, message: 'Error occurred while resetting the password.'});
+                    return;
+                  }
+
+                  if (!error) {
+                    res.status(200).json({success: true, message: 'Password reset successfully. Please login again.'});
+                  }
+                });
+              });
+            }
+          });
         }
       });
     }
